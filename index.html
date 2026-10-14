@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marvel Snap – Deck Decoder</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><text y=%27.9em%27 font-size=%2790%27>🃏</text></svg>">
+<style>
+  :root { --bg:#0b0d1a; --panel:#141830cc; --line:#2a3058; --fg:#eef0ff; --muted:#9aa0c8; --accent:#7c5cff; --accent2:#00c2ff; --card:#1b2042; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background: radial-gradient(900px 500px at 15% -10%, #3b2a8c55, transparent 60%),
+                radial-gradient(800px 500px at 100% 0%, #0a6bff33, transparent 55%),
+                radial-gradient(700px 500px at 50% 110%, #c0262d22, transparent 60%), var(--bg);
+    background-attachment:fixed; }
+  .wrap { max-width:760px; margin:0 auto; padding:36px 16px 48px; }
+  header { text-align:center; margin-bottom:22px; }
+  .logo { font-size:.8rem; letter-spacing:.4em; color:var(--accent2); font-weight:700; margin-bottom:6px; }
+  h1 { margin:0; font-size:2.2rem; font-weight:900; letter-spacing:.02em;
+       background:linear-gradient(90deg,#fff,#b9a8ff 45%,#58d6ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .sub { color:var(--muted); margin:10px 0 0; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px; backdrop-filter:blur(6px);
+           box-shadow:0 10px 40px #0008; }
+  textarea { width:100%; height:120px; background:#0d1128; color:var(--fg); border:1px solid var(--line); border-radius:10px;
+             padding:12px; font-family:ui-monospace,Consolas,monospace; font-size:.9rem; resize:vertical; outline:none; transition:.2s; }
+  textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px #7c5cff33; }
+  button { background:linear-gradient(135deg,var(--accent),#4f7bff); color:#fff; border:0; border-radius:10px; padding:11px 22px;
+           font-size:1rem; font-weight:700; cursor:pointer; margin:12px 10px 0 0; transition:.15s; box-shadow:0 4px 16px #7c5cff55; }
+  button:hover { transform:translateY(-1px); filter:brightness(1.1); }
+  button:active { transform:translateY(0); }
+  #copy { background:linear-gradient(135deg,#1fb36b,#12c9a0); box-shadow:0 4px 16px #1fb36b44; }
+  #status { color:var(--muted); font-size:.9rem; margin-top:12px; min-height:1.2em; }
+  .hidden { display:none; }
+  #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; margin:18px 0; }
+  .tile { position:relative; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; text-align:center;
+          transition:.2s; }
+  .tile:hover { transform:translateY(-4px); border-color:var(--accent); box-shadow:0 8px 24px #7c5cff44; }
+  .tile img { width:100%; display:block; aspect-ratio:1/1; object-fit:cover; background:#0004; }
+  .tile .ph { aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:.8rem; padding:6px;
+              background:linear-gradient(160deg,#252b5a,#141830); }
+  .tile .nm { font-size:.8rem; font-weight:600; padding:8px 4px; }
+  .badge { position:absolute; top:7px; min-width:28px; height:28px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+           font-weight:800; font-size:.9rem; color:#fff; border:2px solid #fff3; box-shadow:0 2px 8px #0008; }
+  .cost { left:7px; background:linear-gradient(135deg,#2f7bff,#00b4ff); }
+  .power { right:7px; background:linear-gradient(135deg,#e0343a,#ff7a45); }
+  pre { background:#0d1128; border:1px solid var(--line); border-radius:10px; padding:14px; overflow-x:auto; white-space:pre-wrap;
+        word-break:break-all; font-size:.85rem; margin:0; }
+  footer { text-align:center; color:var(--muted); font-size:.75rem; margin-top:26px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">MARVEL SNAP</div>
+    <h1>Deck Decoder</h1>
+    <p class="sub">Paste everything the game copies (or just the code) and copy the result to Discord.</p>
+  </header>
+  <div class="panel">
+    <textarea id="code" placeholder="Paste your deck here…"></textarea>
+    <button id="go">Decode</button>
+    <div id="status"></div>
+    <div id="help" class="hidden panel" style="margin-top:12px;padding:14px;font-size:.9rem;color:var(--muted)">
+      <b style="color:var(--fg)">Card data missing. Run <code>download_images.bat</code> (then reload this page), or load it by hand:</b>
+      <ol style="margin:8px 0 10px 18px;padding:0;line-height:1.6">
+        <li>Open <a id="cardsLink" href="#" target="_blank" rel="noopener" style="color:var(--accent2)">this link</a> in a new tab.</li>
+        <li>Save the page as <code>cards.json</code> (Ctrl+S) &mdash; or select all, copy, and save it in a text file.</li>
+        <li>Pick the file here: <input type="file" id="cj" accept=".json,.txt,application/json,text/plain"></li>
+      </ol>
+      It is saved in this browser, so you only do this once.
+    </div>
+    <div id="out" class="hidden">
+      <div id="grid"></div>
+      <pre id="text"></pre>
+      <button id="copy">Copy for Discord</button>
+    </div>
+  </div>
+  <footer>Fan-made tool · not affiliated with Marvel or Second Dinner</footer>
+</div>
+
+<script src="cards.js"></script>
+<script>
+const CARDS_URL = "https://marvelsnapzone.com/getinfo/?searchtype=cards&searchcardstype=true";
+const $ = id => document.getElementById(id);
+const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
+const noVow = s => norm(s).replace(/[aeiou]/g, "");
+let LOADED = false, BY_NAME = {}, BY_SHORT = {};
+
+function imgUrl(u) { return !u ? "" : u.startsWith("//") ? "https:" + u : u.startsWith("/") ? "https://marvelsnapzone.com" + u : u; }
+
+// Alternative image locations tried in order if the main one fails.
+// Local folder: put files in images/<key>.webp (or .png/.jpg), e.g. images/AntMan.webp
+function imgFallbacks(c) {
+  const k = c.key || c.name;
+  const slug = String(c.name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return [
+    "images/" + k + ".webp", "images/" + k + ".png", "images/" + k + ".jpg",
+    "https://marvelsnapzone.com/wp-content/themes/blocksy-child/assets/media/cards/" + slug + ".webp"
+  ];
+}
+
+// Image proxies: they fetch the picture server-side, which gets around hotlink protection
+function proxied(u) {
+  if (!u) return [];
+  const bare = u.replace(/^https?:\/\//, "");
+  return ["https://i0.wp.com/" + bare, "https://images.weserv.nl/?url=" + encodeURIComponent(bare)];
+}
+
+function parseCards(data) {
+  let raw = data.success || data;
+  raw = raw.cards || raw;
+  if (!Array.isArray(raw)) raw = Object.values(raw);
+  return raw.map(c => ({
+    name: c.name || c.carddefid || c.key, key: c.carddefid || c.key || c.name, cost: +c.cost || 0, power: +c.power || 0,
+    img: imgUrl(c.art || c.image || c.imageurl || c.img || c.src || "")   // "url" is the card page, not the image
+  })).filter(c => c.name);
+}
+
+function index(list) {
+  for (const c of list) {
+    for (const s of [c.name, c.key]) { BY_NAME[norm(s)] = c; BY_SHORT[noVow(s)] = c; }
+  }
+}
+
+async function loadCards() {
+  if (LOADED) return;
+  LOADED = true;
+  // cards.js (created by download_images.bat) always wins: it is the most recent data
+  if (window.CARDS_DATA && window.CARDS_DATA.length) { index(parseCards(window.CARDS_DATA)); return; }
+  // Old cache (snapCards3) may have been saved without images, so it is no longer used.
+  try { localStorage.removeItem("snapCards3"); } catch (e) {}
+  try { const c = JSON.parse(localStorage.getItem("snapCards5")); if (c && c.length) { index(c); return; } } catch (e) {}
+  const sources = [
+    "cards.json",
+    CARDS_URL,
+    "https://corsproxy.io/?url=" + encodeURIComponent(CARDS_URL),          // fallback when the browser blocks CORS
+    "https://api.allorigins.win/raw?url=" + encodeURIComponent(CARDS_URL)
+  ];
+  for (const url of sources) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) continue;
+      const list = parseCards(await r.json());
+      if (list.length) {
+        index(list);
+        if (list.some(c => c.img)) { try { localStorage.setItem("snapCards5", JSON.stringify(list)); } catch (e) {} }
+        return;
+      }
+    } catch (e) {}
+  }
+}
+
+function byName(name) {
+  const k = norm(name);
+  return BY_NAME[k] || BY_NAME[k.replace(/fracturedfrontier$/, "")] || null;
+}
+
+function byShort(tok) {
+  const t = norm(tok);
+  for (const cut of [0, 1, 2]) {              // the code appends 1-2 characters at the end
+    const s = t.slice(0, t.length - cut);
+    if (BY_SHORT[s]) return BY_SHORT[s];
+    const base = s.replace(/frctrdfrntr$/, "");
+    if (base !== s && BY_SHORT[base]) return BY_SHORT[base];
+  }
+  return null;
+}
+
+function b64text(code) {
+  const bin = atob(code + "=".repeat((4 - code.length % 4) % 4));
+  return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+}
+
+function parse(raw) {
+  const txt = raw.replace(/\\n/g, "\n");
+  const listed = [];
+  for (const line of txt.split(/\r?\n/)) {
+    const m = line.match(/^\s*#\s*\((\d+)\)\s*(.+?)\s*$/);
+    if (m) listed.push({ name: m[2], cost: +m[1] });
+  }
+  const found = txt.match(/[A-Za-z0-9+\/]{24,}={0,2}/g) || [];
+  const code = found.sort((a, b) => b.length - a.length)[0] || "";
+  let cards = [];
+  if (listed.length) {
+    cards = listed.map(l => { const c = byName(l.name); return { name: l.name, cost: l.cost, power: c ? c.power : null, img: c ? c.img : "" }; });
+  } else if (code) {
+    let decoded;
+    try { decoded = b64text(code); } catch (e) { return null; }
+    if (decoded.trim().startsWith("{")) {        // old format (JSON)
+      try {
+        cards = JSON.parse(decoded).Cards.map(x => {
+          const c = byName(x.CardDefId);
+          return c ? { name: c.name, cost: c.cost, power: c.power, img: c.img } : { name: x.CardDefId, cost: 99, power: null, img: "" };
+        });
+      } catch (e) { return null; }
+    } else {
+      cards = decoded.split(",").filter(Boolean).map(tok => {
+        const c = byShort(tok);
+        return c ? { name: c.name, cost: c.cost, power: c.power, img: c.img } : { name: tok, cost: 99, power: null, img: "" };
+      });
+    }
+  }
+  return cards.length ? { cards, code } : null;
+}
+
+$("go").onclick = async () => {
+  $("out").classList.add("hidden");
+  $("status").textContent = "Processing…";
+  await loadCards();
+  const res = parse($("code").value);
+  if (!res) { $("status").textContent = "Could not read this deck. Copy it again from the game."; return; }
+  const cards = res.cards.sort((a, b) => a.cost - b.cost || (a.power ?? 0) - (b.power ?? 0) || a.name.localeCompare(b.name));
+  const lines = cards.map(c => `${c.name} - ${c.cost === 99 ? "?" : c.cost}` + (c.power !== null ? ` / ${c.power}` : "")).join("\n");
+  $("text").textContent = "```\n" + lines + "\n```" + (res.code ? "\nDeckcode:\n`" + res.code + "`" : "");
+  const grid = $("grid");
+  grid.textContent = "";
+  for (const c of cards) {
+    const t = document.createElement("div"); t.className = "tile";
+    const srcs = [c.img, ...proxied(c.img), ...imgFallbacks(c)].filter(Boolean);
+    const im = document.createElement("img"); im.alt = c.name; im.loading = "lazy";
+    im.referrerPolicy = "no-referrer";            // avoids hotlink protection based on Referer
+    let n = 0;
+    im.onerror = () => {
+      if (++n < srcs.length) { im.src = srcs[n]; return; }
+      const ph = document.createElement("div"); ph.className = "ph"; ph.textContent = c.name; im.replaceWith(ph);
+    };
+    im.src = srcs[0];
+    t.appendChild(im);
+    const co = document.createElement("div"); co.className = "badge cost"; co.textContent = c.cost === 99 ? "?" : c.cost; t.appendChild(co);
+    if (c.power !== null) { const po = document.createElement("div"); po.className = "badge power"; po.textContent = c.power; t.appendChild(po); }
+    const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = c.name; t.appendChild(nm);
+    grid.appendChild(t);
+  }
+  $("out").classList.remove("hidden");
+  const noPower = cards.some(c => c.power === null), unknown = cards.some(c => c.cost === 99);
+  const noImg = cards.some(c => !c.img);
+  $("status").textContent = unknown ? "Some cards could not be identified (?). Card data is missing." :
+    noPower ? "No card data loaded (no images or power); showing cost only." :
+    noImg ? "Some cards have no image." : "";
+  $("help").classList.toggle("hidden", !(unknown || noPower));
+};
+
+$("cardsLink").href = CARDS_URL;
+$("cj").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const list = parseCards(JSON.parse(await f.text()));
+    if (!list.length) throw new Error("empty");
+    index(list);
+    try { localStorage.setItem("snapCards5", JSON.stringify(list)); } catch (err) {}
+    $("go").click();
+  } catch (err) {
+    $("status").textContent = "That file is not valid card data. Save the page from the link again.";
+  }
+};
+
+$("copy").onclick = async () => {
+  await navigator.clipboard.writeText($("text").textContent);
+  $("copy").textContent = "Copied!";
+  setTimeout(() => $("copy").textContent = "Copy for Discord", 1500);
+};
+</script>
+</body>
+</html>
