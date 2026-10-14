@@ -39,10 +39,6 @@
   .tile .ph { aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:.8rem; padding:6px;
               background:linear-gradient(160deg,#252b5a,#141830); }
   .tile .nm { font-size:.8rem; font-weight:600; padding:8px 4px; }
-  .badge { position:absolute; top:7px; min-width:28px; height:28px; border-radius:14px; display:flex; align-items:center; justify-content:center;
-           font-weight:800; font-size:.9rem; color:#fff; border:2px solid #fff3; box-shadow:0 2px 8px #0008; }
-  .cost { left:7px; background:linear-gradient(135deg,#2f7bff,#00b4ff); }
-  .power { right:7px; background:linear-gradient(135deg,#e0343a,#ff7a45); }
   pre { background:#0d1128; border:1px solid var(--line); border-radius:10px; padding:14px; overflow-x:auto; white-space:pre-wrap;
         word-break:break-all; font-size:.85rem; margin:0; }
   footer { text-align:center; color:var(--muted); font-size:.75rem; margin-top:26px; }
@@ -225,8 +221,6 @@ $("go").onclick = async () => {
     };
     im.src = srcs[0];
     t.appendChild(im);
-    const co = document.createElement("div"); co.className = "badge cost"; co.textContent = c.cost === 99 ? "?" : c.cost; t.appendChild(co);
-    if (c.power !== null) { const po = document.createElement("div"); po.className = "badge power"; po.textContent = c.power; t.appendChild(po); }
     const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = c.name; t.appendChild(nm);
     grid.appendChild(t);
   }
