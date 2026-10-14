@@ -29,12 +29,6 @@
   button:hover { transform:translateY(-1px); filter:brightness(1.1); }
   button:active { transform:translateY(0); }
   #copy { background:linear-gradient(135deg,#1fb36b,#12c9a0); box-shadow:0 4px 16px #1fb36b44; }
-  #send { background:linear-gradient(135deg,#5865f2,#7983f5); box-shadow:0 4px 16px #5865f266; }
-  #send:disabled { opacity:.6; cursor:wait; }
-  #hookbox { margin-top:14px; font-size:.85rem; color:var(--muted); }
-  #hook { width:100%; margin-top:6px; background:#0d1128; color:var(--fg); border:1px solid var(--line); border-radius:8px;
-          padding:9px 10px; font-family:ui-monospace,Consolas,monospace; font-size:.8rem; outline:none; }
-  #hook:focus { border-color:var(--accent); }
   #status { color:var(--muted); font-size:.9rem; margin-top:12px; min-height:1.2em; }
   .hidden { display:none; }
   #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px; margin:18px 0; }
@@ -45,10 +39,7 @@
   .tile .ph { aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:.8rem; padding:6px;
               background:linear-gradient(160deg,#252b5a,#141830); }
   .tile .nm { font-size:.8rem; font-weight:600; padding:8px 4px; }
-  .badge { position:absolute; top:7px; min-width:28px; height:28px; border-radius:14px; display:flex; align-items:center; justify-content:center;
-           font-weight:800; font-size:.9rem; color:#fff; border:2px solid #fff3; box-shadow:0 2px 8px #0008; }
-  .cost { left:7px; background:linear-gradient(135deg,#2f7bff,#00b4ff); }
-  .power { right:7px; background:linear-gradient(135deg,#e0343a,#ff7a45); }
+  #send { background:linear-gradient(135deg,#5865f2,#7983f5); box-shadow:0 4px 16px #5865f255; }
   pre { background:#0d1128; border:1px solid var(--line); border-radius:10px; padding:14px; overflow-x:auto; white-space:pre-wrap;
         word-break:break-all; font-size:.85rem; margin:0; }
   footer { text-align:center; color:var(--muted); font-size:.75rem; margin-top:26px; }
@@ -79,10 +70,6 @@
       <pre id="text"></pre>
       <button id="copy">Copy for Discord</button>
       <button id="send">Send to Discord</button>
-      <div id="hookbox">
-        Discord webhook URL (saved only in this browser, never in the site's code):
-        <input id="hook" type="password" autocomplete="off" placeholder="https://discord.com/api/webhooks/...">
-      </div>
     </div>
   </div>
   <footer>Fan-made tool · not affiliated with Marvel or Second Dinner</footer>
@@ -90,6 +77,8 @@
 
 <script src="cards.js"></script>
 <script>
+// Address of the function that posts to Discord (api/send.js on Vercel). The Discord webhook stays secret on the server.
+const SEND_URL = "/api/send";
 const CARDS_URL = "https://marvelsnapzone.com/getinfo/?searchtype=cards&searchcardstype=true";
 const $ = id => document.getElementById(id);
 const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -213,13 +202,6 @@ function parse(raw) {
   return cards.length ? { cards, code } : null;
 }
 
-// The card pictures already show cost and power, so the badges are only used
-// as a fallback when no picture could be loaded.
-function addBadges(tile, c) {
-  const co = document.createElement("div"); co.className = "badge cost"; co.textContent = c.cost === 99 ? "?" : c.cost; tile.appendChild(co);
-  if (c.power !== null) { const po = document.createElement("div"); po.className = "badge power"; po.textContent = c.power; tile.appendChild(po); }
-}
-
 $("go").onclick = async () => {
   $("out").classList.add("hidden");
   $("status").textContent = "Processing…";
@@ -240,7 +222,6 @@ $("go").onclick = async () => {
     im.onerror = () => {
       if (++n < srcs.length) { im.src = srcs[n]; return; }
       const ph = document.createElement("div"); ph.className = "ph"; ph.textContent = c.name; im.replaceWith(ph);
-      addBadges(t, c);                            // no picture: show cost/power on the placeholder
     };
     im.src = srcs[0];
     t.appendChild(im);
@@ -271,31 +252,15 @@ $("cj").onchange = async e => {
   }
 };
 
-// Webhook URL lives in localStorage so it is never published in the (public) GitHub repo.
-try { $("hook").value = localStorage.getItem("snapHook") || ""; } catch (e) {}
-$("hook").onchange = () => { try { localStorage.setItem("snapHook", $("hook").value.trim()); } catch (e) {} };
-
 $("send").onclick = async () => {
-  const url = $("hook").value.trim();
-  if (!/^https:\/\/(discord|discordapp)\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(url)) {
-    $("status").textContent = "Paste a valid Discord webhook URL first.";
-    return;
-  }
-  try { localStorage.setItem("snapHook", url); } catch (e) {}
-  const content = $("text").textContent;
-  if (content.length > 2000) { $("status").textContent = "Deck text is over Discord's 2000 character limit."; return; }
-  $("send").disabled = true;
+  const text = $("text").textContent;
+  if (text.length > 1900) { $("status").textContent = "Message is too long for Discord."; return; }
+  $("send").textContent = "Sending…";
   try {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "Deck Decoder", content })
-    });
-    $("status").textContent = r.ok ? "Sent to Discord!" : "Discord refused it (error " + r.status + "). Check the webhook URL.";
-  } catch (e) {
-    $("status").textContent = "Could not reach Discord. Check your connection.";
-  }
-  $("send").disabled = false;
+    const r = await fetch(SEND_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: text }) });
+    $("status").textContent = r.ok ? "Sent to Discord!" : "Could not send (" + r.status + ").";
+  } catch (e) { $("status").textContent = "Could not send. Check that the site is deployed on Vercel."; }
+  $("send").textContent = "Send to Discord";
 };
 
 $("copy").onclick = async () => {
