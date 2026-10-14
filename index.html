@@ -39,7 +39,6 @@
   .tile .ph { aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:.8rem; padding:6px;
               background:linear-gradient(160deg,#252b5a,#141830); }
   .tile .nm { font-size:.8rem; font-weight:600; padding:8px 4px; }
-  #send { background:linear-gradient(135deg,#5865f2,#7983f5); box-shadow:0 4px 16px #5865f255; }
   pre { background:#0d1128; border:1px solid var(--line); border-radius:10px; padding:14px; overflow-x:auto; white-space:pre-wrap;
         word-break:break-all; font-size:.85rem; margin:0; }
   footer { text-align:center; color:var(--muted); font-size:.75rem; margin-top:26px; }
@@ -69,7 +68,6 @@
       <div id="grid"></div>
       <pre id="text"></pre>
       <button id="copy">Copy for Discord</button>
-      <button id="send">Send to Discord</button>
     </div>
   </div>
   <footer>Fan-made tool · not affiliated with Marvel or Second Dinner</footer>
@@ -77,8 +75,6 @@
 
 <script src="cards.js"></script>
 <script>
-// Address of the function that posts to Discord (api/send.js on Vercel). The Discord webhook stays secret on the server.
-const SEND_URL = "/api/send";
 const CARDS_URL = "https://marvelsnapzone.com/getinfo/?searchtype=cards&searchcardstype=true";
 const $ = id => document.getElementById(id);
 const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -250,17 +246,6 @@ $("cj").onchange = async e => {
   } catch (err) {
     $("status").textContent = "That file is not valid card data. Save the page from the link again.";
   }
-};
-
-$("send").onclick = async () => {
-  const text = $("text").textContent;
-  if (text.length > 1900) { $("status").textContent = "Message is too long for Discord."; return; }
-  $("send").textContent = "Sending…";
-  try {
-    const r = await fetch(SEND_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: text }) });
-    $("status").textContent = r.ok ? "Sent to Discord!" : "Could not send (" + r.status + ").";
-  } catch (e) { $("status").textContent = "Could not send. Check that the site is deployed on Vercel."; }
-  $("send").textContent = "Send to Discord";
 };
 
 $("copy").onclick = async () => {
